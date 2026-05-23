@@ -1,0 +1,414 @@
+import 'package:flutter/material.dart';
+import '../../models/absensi_model.dart';
+import '../../services/api_service.dart';
+import '../../services/triple_des_service.dart';
+import '../../utils/constants.dart';
+
+class DataAbsensiScreen extends StatefulWidget {
+  const DataAbsensiScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DataAbsensiScreen> createState() => _DataAbsensiScreenState();
+}
+
+class _DataAbsensiScreenState extends State<DataAbsensiScreen> {
+  List<AbsensiModel> _absensiList = [];
+  bool _isLoading = true;
+  String _errorMsg = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAbsensi();
+  }
+
+  Future<void> _fetchAbsensi() async {
+    setState(() {
+      _isLoading = true;
+      _errorMsg = "";
+    });
+
+    try {
+      final response = await ApiService.get('get_absensi_all.php');
+
+      if (response['status'] == 'success') {
+        final data = response['data'] as List;
+        setState(() {
+          _absensiList = data
+              .map(
+                (item) => AbsensiModel.fromJson(item as Map<String, dynamic>),
+              )
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMsg = response['message'] ?? "Gagal mengambil data absensi";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMsg = "Gagal terhubung ke server lokal. Pastikan server aktif.";
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showCryptographyDetail(AbsensiModel absensi) {
+    String decryptedPlain = "";
+    bool decryptSuccess = true;
+    try {
+      decryptedPlain = TripleDesService.decryptData(absensi.cipherText);
+    } catch (e) {
+      decryptedPlain = "Dekripsi gagal: ${e.toString()}";
+      decryptSuccess = false;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Row(
+                children: [
+                  Icon(
+                    Icons.enhanced_encryption,
+                    color: AppConstants.primaryColor,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "Detail Kriptografi 3DES (Admin View)",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppConstants.textDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Data Absensi milik: ${absensi.nama} (NIM: ${absensi.nim})",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppConstants.textDark,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Ciphertext Card
+              const Text(
+                "CIPHERTEXT TERENKRIPSI DI DATABASE:",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SelectableText(
+                  absensi.cipherText,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Decrypted Plaintext Card
+              const Text(
+                "HASIL DEKRIPSI KUNCI TRIPLE DES:",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      decryptedPlain,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    if (decryptSuccess) ...[
+                      const SizedBox(height: 10),
+                      const Divider(),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Format: student_id | session_id | tanggal | jam | status | random_key",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppConstants.textLight,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Tutup",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppConstants.primaryColor),
+      );
+    }
+
+    if (_errorMsg.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 60,
+                color: Colors.redAccent,
+              ),
+              const SizedBox(height: 16),
+              Text(_errorMsg, textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppConstants.primaryColor,
+                ),
+                onPressed: _fetchAbsensi,
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                label: const Text(
+                  "Coba Lagi",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_absensiList.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchAbsensi,
+        color: AppConstants.primaryColor,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.assignment_turned_in_outlined,
+                    size: 64,
+                    color: AppConstants.textLight,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Belum ada absensi yang masuk hari ini.",
+                    style: TextStyle(
+                      color: AppConstants.textLight,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchAbsensi,
+      color: AppConstants.primaryColor,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _absensiList.length,
+        itemBuilder: (context, index) {
+          final absensi = _absensiList[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+            color: Colors.white,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.withOpacity(0.1)),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.history_edu,
+                    color: AppConstants.primaryColor,
+                  ),
+                ),
+                title: Text(
+                  absensi.nama ?? "User",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppConstants.textDark,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      "NIM: ${absensi.nim ?? '-'}",
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Jam: ${absensi.tanggal}  •  ${absensi.jam}",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppConstants.textLight,
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        absensi.status,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.enhanced_encryption,
+                          size: 10,
+                          color: Colors.green,
+                        ),
+                        SizedBox(width: 2),
+                        Text(
+                          "3DES Verified",
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                onTap: () => _showCryptographyDetail(absensi),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

@@ -1,0 +1,35 @@
+name: absensi_triple_des_offline
+description: "Aplikasi Absensi Offline menggunakan keamanan enkripsi Triple DES berbasis Flutter untuk demo skripsi/tugas akhir."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Security & Enkripsi
+  encrypt: ^5.0.3
+  dart_des: ^1.0.2
+
+  # QR Code scanning and generation
+  mobile_scanner: ^5.1.1
+  qr_flutter: ^4.1.0
+
+  # Networking & local data storage
+  http: ^1.2.1
+  shared_preferences: ^2.2.3
+
+  # UI & Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
