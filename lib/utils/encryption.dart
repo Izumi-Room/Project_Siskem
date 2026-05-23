@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dart_des/dart_des.dart';
+import 'custom_des.dart';
 
 class TripleDESHelper {
   // Triple DES (3DES) EDE CBC Security Configurations
