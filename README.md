@@ -273,7 +273,7 @@ Didistribusikan di bawah lisensi **MIT**. Lihat [`LICENSE`](LICENSE) untuk infor
 | Avatar | Nama | Peran |
 |:------:|:----:|:-----:|
 | 👤 | **Ary Subakti** | Lead Developer & Security |
-| 👤 | **Erlinda Amira Putri Sudarmono	2401020021** | UI/UX Designer |
+| 👤 | **Erlinda Amira Putri Sudarmono** | UI/UX Designer |
 | 👤 | **Rismayanti** | Backend & API |
 
 </div>
