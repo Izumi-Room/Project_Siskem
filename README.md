@@ -1,6 +1,6 @@
 <div align="center">
 
-# Absensi Triple DES Offline
+# Absensi Triple DES 
 
 ### Sistem absensi QR Code dengan Firebase dan enkripsi Triple DES
 
@@ -17,7 +17,7 @@ Data kehadiran tidak hanya dicatat, tetapi juga diproses melalui lapisan enkrips
 
 ## Gambaran Project
 
-**Absensi Triple DES Offline** adalah aplikasi absensi berbasis Flutter untuk kebutuhan demo skripsi, tugas akhir, atau pembelajaran kriptografi terapan. Aplikasi ini menggabungkan QR Code sebagai media sesi absensi, Firebase sebagai backend cloud, dan Triple DES sebagai mekanisme enkripsi payload.
+**Absensi Triple DES** adalah aplikasi absensi berbasis Flutter untuk kebutuhan demo skripsi, tugas akhir, atau pembelajaran kriptografi terapan. Aplikasi ini menggabungkan QR Code sebagai media sesi absensi, Firebase sebagai backend cloud, dan Triple DES sebagai mekanisme enkripsi payload.
 
 Alur utamanya sederhana: admin membuat sesi absensi, aplikasi menghasilkan QR Code terenkripsi, mahasiswa memindai kode tersebut, lalu data kehadiran disimpan ke Firebase Realtime Database.
 
