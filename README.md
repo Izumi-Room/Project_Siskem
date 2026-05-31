@@ -126,8 +126,8 @@ Data Absensi  →  [Enkripsi 3DES Key1]  →  [Dekripsi 3DES Key2]  →  [Enkrip
 
 **1. Clone repositori**
 ```bash
-git clone https://github.com/username/absensi-secure.git
-cd absensi-secure
+git clone https://github.com/Izumi-Room/Project_Siskem.git
+cd Project_Siskem
 ```
 
 **2. Install dependensi**
