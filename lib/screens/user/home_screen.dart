@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import '../../services/api_service.dart';
+import '../../services/realtime_database_service.dart';
 import '../../utils/constants.dart';
 import 'scan_screen.dart';
 import 'riwayat_screen.dart';
@@ -18,7 +18,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   int _currentIndex = 0;
   UserModel? _currentUser;
   bool _isLoading = true;
-  String _serverIp = "";
+  final _databaseService = RealtimeDatabaseService();
 
   // Statistics
   int _hadirCount = 0;
@@ -33,10 +33,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   void _loadUserSession() async {
     final session = await AuthService().getUserSession();
-    final ip = await AppConstants.getServerIp();
     setState(() {
       _currentUser = session;
-      _serverIp = ip;
       _isLoading = false;
     });
 
@@ -48,30 +46,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   // Fetch quick attendance counts
   void _fetchStats(int userId) async {
     try {
-      final response = await ApiService.get(
-        'get_riwayat.php',
-        params: {'user_id': userId.toString()},
-      );
-
-      if (response['status'] == 'success') {
-        final list = response['data'] as List;
-        int hadir = 0;
-        int sakit = 0;
-        int izin = 0;
-
-        for (var item in list) {
-          final status = item['status'].toString().toLowerCase();
-          if (status.contains('hadir')) hadir++;
-          if (status.contains('sakit')) sakit++;
-          if (status.contains('izin')) izin++;
-        }
-
-        setState(() {
-          _hadirCount = hadir;
-          _sakitCount = sakit;
-          _izinCount = izin;
-        });
-      }
+      final stats = await _databaseService.getUserStats(_currentUser!.uid);
+      setState(() {
+        _hadirCount = stats['hadir'] ?? 0;
+        _sakitCount = stats['sakit'] ?? 0;
+        _izinCount = stats['izin'] ?? 0;
+      });
     } catch (_) {
       // Silently fail stats if server is offline
     }
@@ -114,7 +94,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       appBar: AppBar(
         title: Text(
           titles[_currentIndex],
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),
         ),
         centerTitle: true,
         backgroundColor: AppConstants.primaryColor,
@@ -150,7 +131,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           backgroundColor: Colors.white,
           selectedItemColor: AppConstants.primaryColor,
           unselectedItemColor: AppConstants.textLight.withValues(alpha: 0.6),
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          selectedLabelStyle:
+              const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontSize: 11),
           items: const [
             BottomNavigationBarItem(
@@ -189,7 +171,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           // Elegant Welcome Header Banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32, top: 20),
+            padding:
+                const EdgeInsets.only(left: 24, right: 24, bottom: 32, top: 20),
             decoration: const BoxDecoration(
               color: AppConstants.primaryColor,
               borderRadius: BorderRadius.only(
@@ -261,7 +244,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              "Koneksi Server Lokal",
+                              "Koneksi Firebase Cloud",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AppConstants.textDark,
@@ -269,7 +252,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              "Terhubung ke WiFi IP: $_serverIp",
+                              "Data tersimpan langsung di Realtime Database",
                               style: const TextStyle(
                                 color: AppConstants.textLight,
                                 fontSize: 13,
@@ -279,13 +262,14 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
-                          "OFFLINE",
+                          "ONLINE",
                           style: TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
@@ -346,7 +330,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.shield_outlined, color: Colors.white, size: 24),
+                          Icon(Icons.shield_outlined,
+                              color: Colors.white, size: 24),
                           SizedBox(width: 8),
                           Text(
                             "Keamanan Triple DES",
@@ -360,7 +345,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        "Seluruh transaksi absensi Anda dienkripsi secara lokal sebelum dikirimkan ke server lokal guna melindungi integritas data kehadiran.",
+                        "Seluruh transaksi absensi Anda dienkripsi di aplikasi sebelum disimpan ke Firebase Cloud.",
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13,
@@ -382,10 +367,14 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildInstructionRow("1", "Minta Admin untuk menampilkan QR Code Sesi Absensi."),
-                _buildInstructionRow("2", "Tekan tombol tab 'Scan' di menu navigasi bawah."),
-                _buildInstructionRow("3", "Arahkan kamera ke QR Code atau gunakan Mode Demo jika di emulator."),
-                _buildInstructionRow("4", "Data dienkripsi secara aman dan disimpan ke server lokal."),
+                _buildInstructionRow(
+                    "1", "Minta Admin untuk menampilkan QR Code Sesi Absensi."),
+                _buildInstructionRow(
+                    "2", "Tekan tombol tab 'Scan' di menu navigasi bawah."),
+                _buildInstructionRow("3",
+                    "Arahkan kamera ke QR Code atau gunakan Mode Demo jika di emulator."),
+                _buildInstructionRow("4",
+                    "Data dienkripsi secara aman dan disimpan ke Firebase Cloud."),
               ],
             ),
           ),
@@ -443,7 +432,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
         children: [
           CircleAvatar(
             radius: 12,
-            backgroundColor: AppConstants.secondaryColor.withValues(alpha: 0.15),
+            backgroundColor:
+                AppConstants.secondaryColor.withValues(alpha: 0.15),
             child: Text(
               stepNumber,
               style: const TextStyle(

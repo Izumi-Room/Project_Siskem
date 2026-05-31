@@ -1,6 +1,8 @@
 class AbsensiModel {
   final int id;
   final int userId;
+  final String docId;
+  final String userUid;
   final String? nama; // Joined from users (Admin view)
   final String? nim; // Joined from users (Admin view)
   final String? email; // Joined from users (Admin view)
@@ -12,6 +14,8 @@ class AbsensiModel {
   AbsensiModel({
     required this.id,
     required this.userId,
+    required this.docId,
+    required this.userUid,
     this.nama,
     this.nim,
     this.email,
@@ -22,11 +26,13 @@ class AbsensiModel {
   });
 
   factory AbsensiModel.fromJson(Map<String, dynamic> json) {
+    final docId = (json['doc_id'] ?? json['id'] ?? '').toString();
+    final userUid = (json['user_uid'] ?? json['user_id'] ?? '').toString();
     return AbsensiModel(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
-      userId: json['user_id'] is int
-          ? json['user_id']
-          : int.parse(json['user_id'].toString()),
+      id: json['id'] is int ? json['id'] : docId.hashCode,
+      userId: json['user_id'] is int ? json['user_id'] : userUid.hashCode,
+      docId: docId,
+      userUid: userUid,
       nama: json['nama'] as String?,
       nim: json['nim'] as String?,
       email: json['email'] as String?,
@@ -41,6 +47,8 @@ class AbsensiModel {
     return {
       'id': id,
       'user_id': userId,
+      'doc_id': docId,
+      'user_uid': userUid,
       'nama': nama,
       'nim': nim,
       'email': email,

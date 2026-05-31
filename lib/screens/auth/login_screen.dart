@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import '../../utils/constants.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_textfield.dart';
+import '../../utils/constants.dart';
 import 'register_screen.dart';
 import '../user/home_screen.dart' as user_home;
 import '../admin/admin_home.dart' as admin_home;
@@ -28,89 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  // Method to open Local IP configuration dialog
-  void _showIpConfigDialog() async {
-    final ipController = TextEditingController();
-    ipController.text = await AppConstants.getServerIp();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: const [
-              Icon(Icons.settings_ethernet, color: AppConstants.primaryColor),
-              SizedBox(width: 10),
-              Text(
-                "IP Server Lokal",
-                style: TextStyle(
-                  color: AppConstants.textDark,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Sesuaikan IP laptop hotspot lokal Anda (contoh: 192.168.137.1)",
-                style: TextStyle(color: AppConstants.textLight, fontSize: 13),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: ipController,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.wifi,
-                      color: AppConstants.secondaryColor),
-                  hintText: "Contoh: 192.168.137.1",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal",
-                  style: TextStyle(color: AppConstants.textLight)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () async {
-                final newIp = ipController.text.trim();
-                if (newIp.isNotEmpty) {
-                  await AppConstants.setServerIp(newIp);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("IP Server berhasil diubah ke: $newIp"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-                Navigator.pop(context);
-              },
-              child:
-                  const Text("Simpan", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _handleLogin() async {
@@ -162,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackBar("Terjadi kesalahan koneksi server: $e");
+      _showErrorSnackBar("Terjadi kesalahan Firebase: $e");
     }
   }
 
@@ -171,11 +88,6 @@ class _LoginScreenState extends State<LoginScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.redAccent,
-        action: SnackBarAction(
-          label: "Ubah IP",
-          textColor: Colors.white,
-          onPressed: _showIpConfigDialog,
-        ),
       ),
     );
   }
@@ -232,22 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Row for IP Configuration Button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.settings_suggest_outlined,
-                          color: AppConstants.primaryColor,
-                          size: 28,
-                        ),
-                        tooltip: "Pengaturan IP Server",
-                        onPressed: _showIpConfigDialog,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 52),
                   // App Branding
                   Center(
                     child: Container(
@@ -285,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const Center(
                     child: Text(
-                      "Sistem Kehadiran Offline Aman",
+                      "Sistem Kehadiran Firebase Cloud",
                       style: TextStyle(
                         fontSize: 14,
                         color: AppConstants.textLight,

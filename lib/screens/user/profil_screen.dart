@@ -15,20 +15,6 @@ class ProfilScreen extends StatefulWidget {
 
 class _ProfilScreenState extends State<ProfilScreen> {
   final _authService = AuthService();
-  String _serverIp = "";
-
-  @override
-  void initState() {
-    super.initState();
-    _loadIp();
-  }
-
-  void _loadIp() async {
-    final ip = await AppConstants.getServerIp();
-    setState(() {
-      _serverIp = ip;
-    });
-  }
 
   void _handleLogout() async {
     showDialog(
@@ -158,7 +144,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                   widget.user.role.toUpperCase(),
                 ),
                 const Divider(height: 24),
-                _buildInfoRow(Icons.wifi, "Server IP", _serverIp),
+                _buildInfoRow(Icons.cloud_done, "Database", "Firebase Cloud"),
                 const Divider(height: 24),
                 _buildInfoRow(
                   Icons.lock,

@@ -1,5 +1,6 @@
 class UserModel {
   final int id;
+  final String uid;
   final String nama;
   final String? nim; // Nullable for admin
   final String email;
@@ -7,6 +8,7 @@ class UserModel {
 
   UserModel({
     required this.id,
+    required this.uid,
     required this.nama,
     this.nim,
     required this.email,
@@ -14,8 +16,10 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final uid = (json['uid'] ?? json['id'] ?? '').toString();
     return UserModel(
-      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
+      id: json['id'] is int ? json['id'] : uid.hashCode,
+      uid: uid,
       nama: json['nama'] as String,
       nim: json['nim'] as String?,
       email: json['email'] as String,
@@ -24,7 +28,14 @@ class UserModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'nama': nama, 'nim': nim, 'email': email, 'role': role};
+    return {
+      'id': id,
+      'uid': uid,
+      'nama': nama,
+      'nim': nim,
+      'email': email,
+      'role': role,
+    };
   }
 
   bool get isAdmin => role == 'admin';

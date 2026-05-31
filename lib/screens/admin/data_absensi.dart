@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/absensi_model.dart';
-import '../../services/api_service.dart';
+import '../../services/realtime_database_service.dart';
 import '../../services/triple_des_service.dart';
 import '../../utils/constants.dart';
 
@@ -15,6 +15,7 @@ class _DataAbsensiScreenState extends State<DataAbsensiScreen> {
   List<AbsensiModel> _absensiList = [];
   bool _isLoading = true;
   String _errorMsg = "";
+  final _databaseService = RealtimeDatabaseService();
 
   @override
   void initState() {
@@ -29,27 +30,14 @@ class _DataAbsensiScreenState extends State<DataAbsensiScreen> {
     });
 
     try {
-      final response = await ApiService.get('get_absensi_all.php');
-
-      if (response['status'] == 'success') {
-        final data = response['data'] as List;
-        setState(() {
-          _absensiList = data
-              .map(
-                (item) => AbsensiModel.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMsg = response['message'] ?? "Gagal mengambil data absensi";
-          _isLoading = false;
-        });
-      }
+      final data = await _databaseService.getAllAbsensi();
+      setState(() {
+        _absensiList = data;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        _errorMsg = "Gagal terhubung ke server lokal. Pastikan server aktif.";
+        _errorMsg = "Gagal mengambil data absensi dari Firebase Cloud.";
         _isLoading = false;
       });
     }

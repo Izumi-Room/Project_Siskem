@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/absensi_model.dart';
-import '../../services/api_service.dart';
+import '../../services/realtime_database_service.dart';
 import '../../services/triple_des_service.dart';
 import '../../utils/constants.dart';
 
@@ -18,6 +18,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   List<AbsensiModel> _riwayatList = [];
   bool _isLoading = true;
   String _errorMsg = "";
+  final _databaseService = RealtimeDatabaseService();
 
   @override
   void initState() {
@@ -32,30 +33,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     });
 
     try {
-      final response = await ApiService.get(
-        'get_riwayat.php',
-        params: {'user_id': widget.user.id.toString()},
-      );
-
-      if (response['status'] == 'success') {
-        final data = response['data'] as List;
-        setState(() {
-          _riwayatList = data
-              .map(
-                (item) => AbsensiModel.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMsg = response['message'] ?? "Gagal mengambil riwayat";
-          _isLoading = false;
-        });
-      }
+      final data = await _databaseService.getRiwayatAbsensi(widget.user.uid);
+      setState(() {
+        _riwayatList = data;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        _errorMsg = "Gagal terhubung ke server lokal. Pastikan server aktif.";
+        _errorMsg = "Gagal mengambil riwayat dari Firebase Cloud.";
         _isLoading = false;
       });
     }

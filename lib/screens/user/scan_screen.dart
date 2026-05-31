@@ -61,10 +61,10 @@ class _ScanScreenState extends State<ScanScreen> {
     final randomKey = parsedQR['random_key'];
 
     // 2. Validate date (Optional, for demo we can print info)
-    // 3. Submit attendance (student encrypts their data and posts to PHP)
+    // 3. Submit attendance to Firebase Realtime Database
     try {
       final response = await _scannerService.submitAttendance(
-        studentId: widget.user.id,
+        student: widget.user,
         adminId: adminId,
         tanggal: tanggal,
         jam: jam,
@@ -78,7 +78,7 @@ class _ScanScreenState extends State<ScanScreen> {
           success: true,
           title: "Absensi Berhasil!",
           message:
-              "Kehadiran Anda [Status: $status] pada tanggal $tanggal jam $jam telah sukses dicatat di database server lokal menggunakan pengamanan Triple DES.",
+              "Kehadiran Anda [Status: $status] pada tanggal $tanggal jam $jam telah sukses dicatat di Firebase Cloud menggunakan pengamanan Triple DES.",
         );
       } else {
         _showResultDialog(
@@ -91,8 +91,7 @@ class _ScanScreenState extends State<ScanScreen> {
       _showResultDialog(
         success: false,
         title: "Koneksi Bermasalah",
-        message:
-            "Gagal mengirim data ke server. Pastikan IP server lokal sudah disesuaikan dan server XAMPP aktif. Detail: $e",
+        message: "Gagal menyimpan data ke Firebase Cloud. Detail: $e",
       );
     }
   }
@@ -153,9 +152,8 @@ class _ScanScreenState extends State<ScanScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: success
-                        ? Colors.green
-                        : AppConstants.primaryColor,
+                    backgroundColor:
+                        success ? Colors.green : AppConstants.primaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -462,12 +460,13 @@ class QrScannerOverlayShape extends ShapeBorder {
       Path.combine(
         PathOperation.difference,
         Path()..addRect(rect),
-        Path()..addRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTRB(left, top, right, bottom),
-            Radius.circular(borderRadius),
+        Path()
+          ..addRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTRB(left, top, right, bottom),
+              Radius.circular(borderRadius),
+            ),
           ),
-        ),
       ),
       paint,
     );

@@ -8,7 +8,7 @@ class GenerateBarcodeScreen extends StatefulWidget {
   final UserModel admin;
 
   const GenerateBarcodeScreen({Key? key, required this.admin})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<GenerateBarcodeScreen> createState() => _GenerateBarcodeScreenState();
@@ -30,6 +30,7 @@ class _GenerateBarcodeScreenState extends State<GenerateBarcodeScreen> {
     try {
       final cipherText = await _barcodeService.generateNewSession(
         adminId: widget.admin.id,
+        adminUid: widget.admin.uid,
         status: _selectedStatus,
         durationMinutes: _durationMinutes,
       );
@@ -43,7 +44,7 @@ class _GenerateBarcodeScreenState extends State<GenerateBarcodeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              "QR Code Sesi Absensi berhasil dibuat & didaftarkan ke server!",
+              "QR Code Sesi Absensi berhasil dibuat & disimpan ke Firebase Cloud!",
             ),
             backgroundColor: Colors.green,
           ),
@@ -51,7 +52,7 @@ class _GenerateBarcodeScreenState extends State<GenerateBarcodeScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Gagal mendaftarkan sesi QR ke database server."),
+            content: Text("Gagal menyimpan sesi QR ke Firebase Cloud."),
             backgroundColor: Colors.redAccent,
           ),
         );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConstants {
   // Theme Colors (Premium Blue & White Palette)
@@ -10,27 +9,4 @@ class AppConstants {
   static const Color cardColor = Colors.white;
   static const Color textDark = Color(0xFF1E293B); // Slate 800
   static const Color textLight = Color(0xFF64748B); // Slate 500
-
-  // Fallback default IP
-  static const String defaultIp = '192.168.137.1';
-  static const String ipPrefsKey = 'absensi_server_ip';
-
-  // Getter for Dynamic Base URL based on stored IP
-  static Future<String> getBaseUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ip = prefs.getString(ipPrefsKey) ?? defaultIp;
-    return 'http://$ip/absensi_api';
-  }
-
-  // Getter for stored IP
-  static Future<String> getServerIp() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(ipPrefsKey) ?? defaultIp;
-  }
-
-  // Setter for server IP
-  static Future<bool> setServerIp(String ip) async {
-    final prefs = await SharedPreferences.getInstance();
-    return await prefs.setString(ipPrefsKey, ip.trim());
-  }
 }

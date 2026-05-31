@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "78141225225",
+    "project_id": "siskem-firebase",
+    "storage_bucket": "siskem-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78141225225:android:88603fa5219fd740fcfbd8",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9Az8kJzHNeKIYwoIVNUCQhjtxkg5eGJQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,61 +1,112 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/user_model.dart';
-import 'api_service.dart';
+import 'realtime_database_service.dart';
 
 class AuthService {
-  static const String userSessionKey = 'absensi_user_session';
+  AuthService({
+    FirebaseAuth? firebaseAuth,
+    RealtimeDatabaseService? databaseService,
+  })  : _firebaseAuth = firebaseAuth,
+        _providedDatabaseService = databaseService;
 
-  /// Authenticate user via PHP login endpoint
+  final FirebaseAuth? _firebaseAuth;
+  final RealtimeDatabaseService? _providedDatabaseService;
+
+  FirebaseAuth get _auth => _firebaseAuth ?? FirebaseAuth.instance;
+  RealtimeDatabaseService get _databaseService =>
+      _providedDatabaseService ?? RealtimeDatabaseService();
+
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await ApiService.post('login.php', {
-      'email': email,
-      'password': password,
-    });
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        return {'status': 'error', 'message': 'Login gagal.'};
+      }
 
-    if (response['status'] == 'success' && response['user'] != null) {
-      final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
-      await saveUserSession(user);
+      final user = await _databaseService.getUserProfile(firebaseUser.uid);
+      if (user == null) {
+        await _auth.signOut();
+        return {
+          'status': 'error',
+          'message': 'Profil pengguna belum tersedia di Realtime Database.',
+        };
+      }
+
+      return {'status': 'success', 'user': user.toJson()};
+    } on FirebaseAuthException catch (error) {
+      return {'status': 'error', 'message': _authMessage(error)};
+    } catch (error) {
+      return {'status': 'error', 'message': 'Login gagal: $error'};
     }
-    return response;
   }
 
-  /// Register student via PHP register endpoint
   Future<Map<String, dynamic>> register({
     required String nama,
     required String nim,
     required String email,
     required String password,
   }) async {
-    return await ApiService.post('register.php', {
-      'nama': nama,
-      'nim': nim,
-      'email': email,
-      'password': password,
-    });
-  }
-
-  /// Save logged-in user details locally
-  Future<bool> saveUserSession(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    return await prefs.setString(userSessionKey, jsonEncode(user.toJson()));
-  }
-
-  /// Retrieve current active user session
-  Future<UserModel?> getUserSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(userSessionKey);
-    if (jsonString == null) return null;
     try {
-      return UserModel.fromJson(jsonDecode(jsonString) as Map<String, dynamic>);
-    } catch (_) {
-      return null;
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        return {'status': 'error', 'message': 'Registrasi gagal.'};
+      }
+
+      await firebaseUser.updateDisplayName(nama);
+      await _databaseService.createUserProfile(
+        uid: firebaseUser.uid,
+        nama: nama,
+        nim: nim,
+        email: email,
+      );
+      await _auth.signOut();
+
+      return {'status': 'success'};
+    } on FirebaseAuthException catch (error) {
+      return {'status': 'error', 'message': _authMessage(error)};
+    } catch (error) {
+      return {'status': 'error', 'message': 'Registrasi gagal: $error'};
     }
   }
 
-  /// Terminate session and clear user data
+  Future<UserModel?> getUserSession() async {
+    final firebaseUser = _auth.currentUser;
+    if (firebaseUser == null) return null;
+    return _databaseService.getUserProfile(firebaseUser.uid);
+  }
+
   Future<bool> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    return await prefs.remove(userSessionKey);
+    await _auth.signOut();
+    return true;
+  }
+
+  String _authMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'Format email tidak valid.';
+      case 'user-disabled':
+        return 'Akun ini dinonaktifkan.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Email atau kata sandi salah.';
+      case 'email-already-in-use':
+        return 'Email sudah terdaftar.';
+      case 'weak-password':
+        return 'Kata sandi terlalu lemah.';
+      case 'network-request-failed':
+        return 'Koneksi internet bermasalah.';
+      default:
+        return error.message ?? 'Terjadi kesalahan autentikasi.';
+    }
   }
 }

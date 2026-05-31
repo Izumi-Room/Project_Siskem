@@ -1,0 +1,31 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "siskem-firebase",
+          "appId": "1:78141225225:android:88603fa5219fd740fcfbd8",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "siskem-firebase",
+          "configurations": {
+            "android": "1:78141225225:android:88603fa5219fd740fcfbd8",
+            "ios": "1:78141225225:ios:cc53fa957e1c848bfcfbd8",
+            "macos": "1:78141225225:ios:cc53fa957e1c848bfcfbd8",
+            "web": "1:78141225225:web:b2f78c69a22cd952fcfbd8",
+            "windows": "1:78141225225:web:4d5023920ffe6fbbfcfbd8"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'mahasiswa';
+      allow update: if isAdmin()
+        || (isOwner(uid)
+          && request.resource.data.uid == uid
+          && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /barcode/{barcodeId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /absensi/{absensiId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.user_uid == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.user_uid == request.auth.uid
+        && request.resource.data.status in ['Hadir', 'Sakit', 'Izin', 'hadir', 'sakit', 'izin'];
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

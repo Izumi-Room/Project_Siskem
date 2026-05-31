@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
-import '../../services/api_service.dart';
+import '../../services/realtime_database_service.dart';
 import '../../utils/constants.dart';
 
 class DataUserScreen extends StatefulWidget {
@@ -15,6 +15,7 @@ class _DataUserScreenState extends State<DataUserScreen> {
   List<UserModel> _filteredUserList = [];
   bool _isLoading = true;
   String _errorMsg = "";
+  final _databaseService = RealtimeDatabaseService();
   final _searchController = TextEditingController();
 
   @override
@@ -37,26 +38,15 @@ class _DataUserScreenState extends State<DataUserScreen> {
     });
 
     try {
-      final response = await ApiService.get('get_users.php');
-
-      if (response['status'] == 'success') {
-        final data = response['data'] as List;
-        setState(() {
-          _userList = data
-              .map((item) => UserModel.fromJson(item as Map<String, dynamic>))
-              .toList();
-          _filteredUserList = _userList;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMsg = response['message'] ?? "Gagal mengambil data user";
-          _isLoading = false;
-        });
-      }
+      final data = await _databaseService.getUsers();
+      setState(() {
+        _userList = data;
+        _filteredUserList = _userList;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        _errorMsg = "Gagal terhubung ke server lokal. Pastikan server aktif.";
+        _errorMsg = "Gagal mengambil data user dari Firebase Cloud.";
         _isLoading = false;
       });
     }

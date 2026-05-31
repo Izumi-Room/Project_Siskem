@@ -16,12 +16,16 @@ dependencies:
   mobile_scanner: ^5.1.1
   qr_flutter: ^4.1.0
 
-  # Networking & local data storage
-  http: ^1.2.1
-  shared_preferences: ^2.2.3
+  # Firebase Cloud
+  firebase_core: ^4.9.0
+  firebase_auth: ^6.5.1
+  firebase_database: ^12.1.1
+  firebase_storage: ^13.4.1
 
   # UI & Icons
   cupertino_icons: ^1.0.6
+  geolocator: ^14.0.2
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

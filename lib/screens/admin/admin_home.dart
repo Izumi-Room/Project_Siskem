@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import '../../services/api_service.dart';
+import '../../services/realtime_database_service.dart';
 import '../../utils/constants.dart';
 import '../auth/login_screen.dart';
 import 'generate_barcode.dart';
@@ -20,7 +20,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   int _selectedDrawerIndex = 0;
   UserModel? _currentAdmin;
   bool _isLoading = true;
-  String _serverIp = "";
+  final _databaseService = RealtimeDatabaseService();
 
   // Statistics
   int _totalMahasiswa = 0;
@@ -34,10 +34,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   void _loadAdminSession() async {
     final session = await AuthService().getUserSession();
-    final ip = await AppConstants.getServerIp();
     setState(() {
       _currentAdmin = session;
-      _serverIp = ip;
       _isLoading = false;
     });
 
@@ -46,22 +44,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Future<void> _fetchAdminStats() async {
     try {
-      final responseUser = await ApiService.get('get_users.php');
-      final responseAbsen = await ApiService.get('get_absensi_all.php');
-
-      if (responseUser['status'] == 'success') {
-        final list = responseUser['data'] as List;
-        setState(() {
-          _totalMahasiswa = list.length;
-        });
-      }
-
-      if (responseAbsen['status'] == 'success') {
-        final list = responseAbsen['data'] as List;
-        setState(() {
-          _totalAbsensi = list.length;
-        });
-      }
+      final stats = await _databaseService.getAdminStats();
+      setState(() {
+        _totalMahasiswa = stats['mahasiswa'] ?? 0;
+        _totalAbsensi = stats['absensi'] ?? 0;
+      });
     } catch (_) {
       // Offline fallback
     }
@@ -282,7 +269,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Koneksi Hotspot Lokal Aktif: http://$_serverIp/absensi_api/",
+                  "Firebase Cloud aktif untuk autentikasi dan database absensi.",
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,

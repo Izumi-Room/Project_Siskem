@@ -1,0 +1,36 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".indexOn": ["role", "email", "nim"],
+      "$uid": {
+        ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || ($uid === auth.uid && ((!data.exists() && newData.child('role').val() === 'mahasiswa') || (data.exists() && data.child('role').val() === newData.child('role').val()))))",
+        ".validate": "newData.hasChildren(['uid', 'nama', 'email', 'role']) && newData.child('uid').val() === $uid && newData.child('nama').isString() && newData.child('nama').val().length > 0 && newData.child('email').isString() && newData.child('email').val().matches(/^[^@]+@[^@]+\\.[^@]+$/) && newData.child('role').val().matches(/^(admin|mahasiswa)$/) && (!newData.child('nim').exists() || newData.child('nim').isString())",
+        "role": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        }
+      }
+    },
+    "barcode": {
+      ".read": "auth != null",
+      ".indexOn": ["admin_uid", "expired_at", "created_at"],
+      "$barcodeId": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".validate": "newData.hasChildren(['admin_uid', 'admin_id', 'kode', 'expired_at', 'duration_minutes']) && newData.child('admin_uid').val() === auth.uid && newData.child('kode').isString() && newData.child('kode').val().length > 0 && newData.child('duration_minutes').isNumber() && newData.child('duration_minutes').val() > 0"
+      }
+    },
+    "absensi": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (query.orderByChild === 'user_uid' && query.equalTo === auth.uid))",
+      ".indexOn": ["user_uid", "session_id", "created_at", "tanggal"],
+      "$absensiId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || data.child('user_uid').val() === auth.uid)",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (!data.exists() && newData.child('user_uid').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['user_uid', 'session_id', 'nama', 'nim', 'email', 'tanggal', 'jam', 'status', 'cipher_text']) && (root.child('users').child(auth.uid).child('role').val() === 'admin' || newData.child('user_uid').val() === auth.uid) && newData.child('session_id').isString() && newData.child('tanggal').isString() && newData.child('jam').isString() && newData.child('status').val().matches(/^(Hadir|Sakit|Izin|hadir|sakit|izin)$/) && newData.child('cipher_text').isString() && newData.child('cipher_text').val().length > 0 && (!newData.child('latitude').exists() || newData.child('latitude').isNumber()) && (!newData.child('longitude').exists() || newData.child('longitude').isNumber())"
+      }
+    }
+  }
+}
