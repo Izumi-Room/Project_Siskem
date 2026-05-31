@@ -51,7 +51,6 @@ Data Absensi  →  [Enkripsi 3DES Key1]  →  [Dekripsi 3DES Key2]  →  [Enkrip
 | Fitur | Deskripsi |
 |-------|-----------|
 | 🔐 **Enkripsi 3DES** | Seluruh data absensi dienkripsi end-to-end |
-| 🧬 **Verifikasi Biometrik** | Sidik jari / Face ID sebagai autentikasi masuk |
 | 📍 **Absensi Berbasis GPS** | Validasi lokasi dengan geofencing radius kantor |
 | 🕐 **Real-time Clock** | Timestamp NTP terverifikasi, anti-manipulasi waktu |
 | 📊 **Laporan Kehadiran** | Dashboard lengkap dengan ekspor PDF & Excel |
