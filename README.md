@@ -1,95 +1,144 @@
+<div align="center">
+
 # Absensi Triple DES Offline
 
-Aplikasi absensi berbasis Flutter yang menggunakan QR Code, Firebase, dan enkripsi Triple DES untuk mendukung demo sistem keamanan data absensi.
+### Sistem absensi QR Code dengan Firebase dan enkripsi Triple DES
 
-## Ringkasan
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Realtime%20DB-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Security](https://img.shields.io/badge/Encryption-Triple%20DES-B91C1C?style=for-the-badge)](#catatan-keamanan)
 
-Absensi Triple DES Offline memisahkan alur kerja admin dan mahasiswa:
+Data kehadiran tidak hanya dicatat, tetapi juga diproses melalui lapisan enkripsi untuk kebutuhan pembuktian keamanan data.
 
-- Admin membuat sesi absensi dalam bentuk QR Code terenkripsi.
-- Mahasiswa memindai QR Code untuk mengirim data kehadiran.
-- Data pengguna, sesi, dan absensi disimpan di Firebase Realtime Database.
-- Autentikasi menggunakan Firebase Authentication.
-- Payload QR Code dan payload absensi diproses dengan Triple DES.
+</div>
 
-Project ini ditujukan untuk pembelajaran, penelitian, dan demo tugas akhir. Untuk penggunaan production, konfigurasi keamanan, manajemen key, validasi server-side, dan aturan Firebase perlu diperketat.
+---
 
-## Fitur
+## Gambaran Project
 
-- Login dan register dengan Firebase Authentication.
-- Session checker untuk mengarahkan pengguna ke dashboard sesuai role.
-- Role admin dan mahasiswa.
-- Generate QR Code untuk sesi absensi.
-- Scan QR Code menggunakan kamera perangkat.
-- Input ciphertext manual untuk kebutuhan demo atau emulator.
-- Riwayat absensi mahasiswa.
-- Data mahasiswa dan data absensi untuk admin.
-- Penyimpanan data di Firebase Realtime Database.
-- Penyimpanan lokasi absensi jika izin lokasi diberikan.
-- Enkripsi dan dekripsi payload menggunakan Triple DES.
+**Absensi Triple DES Offline** adalah aplikasi absensi berbasis Flutter untuk kebutuhan demo skripsi, tugas akhir, atau pembelajaran kriptografi terapan. Aplikasi ini menggabungkan QR Code sebagai media sesi absensi, Firebase sebagai backend cloud, dan Triple DES sebagai mekanisme enkripsi payload.
 
-## Teknologi
+Alur utamanya sederhana: admin membuat sesi absensi, aplikasi menghasilkan QR Code terenkripsi, mahasiswa memindai kode tersebut, lalu data kehadiran disimpan ke Firebase Realtime Database.
 
-- Flutter
-- Dart
-- Firebase Core
-- Firebase Authentication
-- Firebase Realtime Database
-- Firebase Storage
-- mobile_scanner
-- qr_flutter
-- geolocator
-- intl
+> Project ini bersifat edukatif. Untuk production, aturan database, manajemen key, validasi sesi, dan proteksi replay attack perlu diperkuat.
 
-## Alur Sistem
+## Highlight
+
+| Area | Kemampuan |
+| --- | --- |
+| Autentikasi | Login dan register menggunakan Firebase Authentication |
+| Role pengguna | Dashboard dipisahkan untuk admin dan mahasiswa |
+| QR Code | Admin membuat QR Code untuk sesi absensi |
+| Scanner | Mahasiswa memindai QR Code dengan kamera perangkat |
+| Enkripsi | Payload sesi dan absensi diproses menggunakan Triple DES |
+| Database | Data pengguna, sesi, dan absensi tersimpan di Firebase Realtime Database |
+| Lokasi | Koordinat absensi ikut disimpan jika izin lokasi diberikan |
+| Demo mode | Ciphertext dapat diuji manual saat memakai emulator |
+| Riwayat | Mahasiswa dapat melihat riwayat kehadiran |
+| Monitoring | Admin dapat melihat data mahasiswa dan rekap absensi |
+
+## Stack Teknologi
+
+| Layer | Teknologi |
+| --- | --- |
+| Mobile app | Flutter, Dart |
+| Authentication | Firebase Authentication |
+| Database | Firebase Realtime Database |
+| Storage | Firebase Storage |
+| QR scanner | `mobile_scanner` |
+| QR generator | `qr_flutter` |
+| Lokasi | `geolocator` |
+| Format tanggal | `intl` |
+| Enkripsi | Triple DES custom service |
+
+## Cara Kerja
 
 ```text
-Admin
-  -> Login
-  -> Pilih status dan durasi sesi
-  -> Buat payload sesi
-  -> Enkripsi Triple DES
-  -> Tampilkan ciphertext sebagai QR Code
-  -> Simpan sesi ke Firebase Realtime Database
+ADMIN
+  Login
+    |
+    v
+  Buat sesi absensi
+    |
+    v
+  Payload: admin_id|tanggal|jam|status|random_key
+    |
+    v
+  Enkripsi Triple DES
+    |
+    v
+  QR Code ditampilkan dan sesi disimpan ke Firebase
 
-Mahasiswa
-  -> Login
-  -> Scan QR Code
-  -> Dekripsi payload sesi
-  -> Buat payload absensi
-  -> Enkripsi Triple DES
-  -> Simpan absensi ke Firebase Realtime Database
-  -> Lihat riwayat absensi
+MAHASISWA
+  Login
+    |
+    v
+  Scan QR Code
+    |
+    v
+  Dekripsi payload sesi
+    |
+    v
+  Payload: user_id|session_id|tanggal|jam|status|random_key
+    |
+    v
+  Enkripsi Triple DES
+    |
+    v
+  Data absensi disimpan ke Firebase
 ```
 
-## Format Payload
+## Format Payload Enkripsi
 
-Payload QR Code dari admin:
+Payload sesi yang dibuat admin:
 
 ```text
 admin_id|tanggal|jam|status|random_key
 ```
 
-Payload absensi dari mahasiswa:
+Payload absensi yang dikirim mahasiswa:
 
 ```text
 user_id|session_id|tanggal|jam|status|random_key
 ```
 
-Contoh penggunaan service:
+Contoh pemanggilan service:
 
 ```dart
 final cipherText = TripleDesService.encryptData(plainPayload);
 final plainText = TripleDesService.decryptData(cipherText);
 ```
 
-File utama terkait enkripsi:
+File terkait:
 
-- `lib/services/triple_des_service.dart`
-- `lib/utils/encryption.dart`
-- `lib/utils/custom_des.dart`
+| File | Fungsi |
+| --- | --- |
+| `lib/services/triple_des_service.dart` | Interface utama enkripsi, dekripsi, dan pembentukan payload |
+| `lib/utils/encryption.dart` | Helper enkripsi Triple DES |
+| `lib/utils/custom_des.dart` | Implementasi pendukung algoritma DES |
 
-## Struktur Project
+## Fitur Berdasarkan Role
+
+### Admin
+
+- Login sebagai admin.
+- Membuat sesi absensi berdasarkan status dan durasi.
+- Menampilkan QR Code terenkripsi.
+- Melihat daftar mahasiswa.
+- Melihat data absensi.
+- Melihat laporan atau rekap data kehadiran.
+
+### Mahasiswa
+
+- Register dan login akun.
+- Scan QR Code absensi.
+- Input ciphertext manual untuk kebutuhan demo.
+- Mengirim absensi berdasarkan sesi aktif.
+- Melihat riwayat absensi.
+- Melihat profil pengguna.
+
+## Struktur Folder
 
 ```text
 lib/
@@ -131,8 +180,6 @@ lib/
 ```
 
 ## Skema Firebase Realtime Database
-
-Data utama disimpan pada node berikut:
 
 ```text
 users/
@@ -177,28 +224,28 @@ absensi/
 ## Persiapan Firebase
 
 1. Buat project Firebase.
-2. Aktifkan Authentication dengan provider Email/Password.
-3. Aktifkan Realtime Database.
-4. Tambahkan aplikasi Android/iOS/Web sesuai target build.
-5. Unduh file konfigurasi Firebase:
+2. Aktifkan **Authentication** dengan provider **Email/Password**.
+3. Aktifkan **Realtime Database**.
+4. Tambahkan aplikasi Android, iOS, atau Web sesuai target build.
+5. Unduh konfigurasi Firebase sesuai platform:
    - Android: `android/app/google-services.json`
    - iOS: `ios/Runner/GoogleService-Info.plist`
-   - Web atau multiplatform: generate ulang `lib/firebase_options.dart` dengan FlutterFire CLI jika diperlukan.
-6. Pastikan URL database sesuai dengan project Firebase.
+   - Multiplatform: generate `lib/firebase_options.dart` menggunakan FlutterFire CLI.
+6. Pastikan URL database sesuai project Firebase yang dipakai.
 
-Default URL database didefinisikan di:
+Default URL database berada di:
 
 ```dart
 lib/services/realtime_database_service.dart
 ```
 
-Untuk override saat menjalankan aplikasi:
+Override URL database saat menjalankan aplikasi:
 
 ```bash
 flutter run --dart-define=FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
 ```
 
-## Instalasi
+## Quick Start
 
 Clone repository:
 
@@ -219,9 +266,9 @@ Jalankan aplikasi:
 flutter run
 ```
 
-## Testing dan Analisis
+## Testing
 
-Jalankan unit/widget test:
+Jalankan test:
 
 ```bash
 flutter test
@@ -241,7 +288,7 @@ Build APK release:
 flutter build apk --release
 ```
 
-Output APK:
+Output:
 
 ```text
 build/app/outputs/flutter-apk/app-release.apk
@@ -256,12 +303,25 @@ flutter build apk --release --obfuscate --split-debug-info=build/debug-info
 ## Catatan Keamanan
 
 - Jangan menyimpan key dan IV production langsung di source code.
-- Gunakan aturan Firebase Realtime Database yang membatasi akses berdasarkan `auth.uid` dan role.
-- Validasi masa berlaku QR Code di sisi database/server logic.
-- Tambahkan proteksi replay attack berbasis session ID atau `random_key`.
-- Hindari mencetak ciphertext, plaintext, token, atau data sensitif ke log production.
-- Gunakan HTTPS dan konfigurasi Firebase resmi untuk setiap platform.
-- Review kembali permission lokasi sebelum rilis.
+- Batasi akses Firebase Realtime Database berdasarkan `auth.uid` dan `role`.
+- Validasi masa berlaku QR Code pada layer database atau backend logic.
+- Tambahkan proteksi replay attack berbasis session ID, nonce, atau `random_key`.
+- Hindari mencetak plaintext, ciphertext, token, atau data sensitif ke log production.
+- Gunakan konfigurasi Firebase resmi untuk setiap platform.
+- Review permission lokasi sebelum aplikasi dirilis.
+
+## Roadmap Pengembangan
+
+| Status | Rencana |
+| --- | --- |
+| Selesai | Login, register, role admin dan mahasiswa |
+| Selesai | Generate dan scan QR Code |
+| Selesai | Penyimpanan absensi ke Firebase Realtime Database |
+| Selesai | Riwayat absensi mahasiswa |
+| Berikutnya | Validasi masa berlaku QR di sisi database atau backend |
+| Berikutnya | Export laporan absensi |
+| Berikutnya | Hardening rules Firebase |
+| Berikutnya | Screenshot asli aplikasi di README |
 
 ## Kontribusi
 
@@ -290,3 +350,11 @@ git push origin fitur/nama-fitur
 ## Lisensi
 
 Project ini dibuat untuk kebutuhan pembelajaran, penelitian, dan pengembangan tugas akhir. Sesuaikan lisensi repository dengan kebutuhan penggunaan.
+
+---
+
+<div align="center">
+
+**Absensi sederhana, alur jelas, dan payload yang dapat dibuktikan melalui enkripsi.**
+
+</div>
