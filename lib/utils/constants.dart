@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
+/// Legacy constants — kept for backward compatibility.
+/// New code should use AppColors and AppTheme directly.
 class AppConstants {
-  // Theme Colors (Premium Blue & White Palette)
-  static const Color primaryColor = Color(0xFF1565C0); // Dark Blue
-  static const Color secondaryColor = Color(0xFF1E88E5); // Bright Blue
-  static const Color accentColor = Color(0xFF00B0FF); // Light Blue
-  static const Color backgroundColor = Color(0xFFF8FAFC); // Off-white/slate 50
-  static const Color cardColor = Colors.white;
-  static const Color textDark = Color(0xFF1E293B); // Slate 800
-  static const Color textLight = Color(0xFF64748B); // Slate 500
+  // Mapped to new design system
+  static const Color primaryColor   = AppColors.primary;
+  static const Color secondaryColor = AppColors.primaryLight;
+  static const Color accentColor    = AppColors.accent;
+  static const Color backgroundColor = AppColors.bgLight;
+  static const Color cardColor      = AppColors.cardLight;
+  static const Color textDark       = AppColors.textPrimary;
+  static const Color textLight      = AppColors.textSecondary;
 }

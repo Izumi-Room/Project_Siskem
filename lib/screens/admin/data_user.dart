@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/realtime_database_service.dart';
-import '../../utils/constants.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/app_widgets.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class DataUserScreen extends StatefulWidget {
   const DataUserScreen({Key? key}) : super(key: key);
@@ -11,153 +13,210 @@ class DataUserScreen extends StatefulWidget {
 }
 
 class _DataUserScreenState extends State<DataUserScreen> {
-  List<UserModel> _userList = [];
-  List<UserModel> _filteredUserList = [];
+  List<UserModel> _users = [];
+  List<UserModel> _filtered = [];
   bool _isLoading = true;
-  String _errorMsg = "";
-  final _databaseService = RealtimeDatabaseService();
-  final _searchController = TextEditingController();
+  String _errorMsg = '';
+  final _db = RealtimeDatabaseService();
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchUsers();
-    _searchController.addListener(_filterUsers);
+    _searchCtrl.addListener(() {
+      final q = _searchCtrl.text.toLowerCase();
+      setState(() {
+        _filtered = q.isEmpty
+            ? List.from(_users)
+            : _users.where((u) {
+                return u.nama.toLowerCase().contains(q) ||
+                    (u.nim?.toLowerCase().contains(q) ?? false) ||
+                    u.email.toLowerCase().contains(q);
+              }).toList();
+      });
+    });
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _fetchUsers() async {
     setState(() {
       _isLoading = true;
-      _errorMsg = "";
+      _errorMsg = '';
     });
-
     try {
-      final data = await _databaseService.getUsers();
+      final data = await _db.getUsers();
       setState(() {
-        _userList = data;
-        _filteredUserList = _userList;
+        _users = data;
+        _filtered = List.from(data);
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
-        _errorMsg = "Gagal mengambil data user dari Firebase Cloud.";
+        _errorMsg = 'Gagal mengambil data mahasiswa.';
         _isLoading = false;
       });
     }
   }
 
-  void _filterUsers() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredUserList = _userList.where((user) {
-        return user.nama.toLowerCase().contains(query) ||
-            (user.nim != null && user.nim!.toLowerCase().contains(query)) ||
-            user.email.toLowerCase().contains(query);
-      }).toList();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Search Header Bar
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: "Cari nama, NIM, atau email...",
-              prefixIcon: const Icon(
-                Icons.search,
-                color: AppConstants.secondaryColor,
-              ),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => _searchController.clear(),
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.withOpacity(0.15)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: AppConstants.secondaryColor,
-                  width: 1.5,
-                ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Data Mahasiswa',
+                    style: AppTextStyles.displayMedium.copyWith(
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_users.length} mahasiswa terdaftar',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: _searchCtrl,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama, NIM, atau email...',
+                      hintStyle: AppTextStyles.bodyMedium.copyWith(
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textTertiary,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18),
+                              onPressed: () => _searchCtrl.clear(),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: isDark
+                          ? AppColors.surfaceDark
+                          : AppColors.surfaceLight,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: 12,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? AppColors.borderDark
+                              : AppColors.borderLight,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            Expanded(child: _buildContent(isDark)),
+          ],
         ),
-
-        Expanded(child: _buildContent()),
-      ],
+      ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(bool isDark) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppConstants.primaryColor),
+      return ListView.builder(
+        itemCount: 6,
+        itemBuilder: (_, __) => const ListItemSkeleton(),
       );
     }
 
     if (_errorMsg.isNotEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 60,
-                color: Colors.redAccent,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off_rounded,
+                size: 56,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textTertiary),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              _errorMsg,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
               ),
-              const SizedBox(height: 16),
-              Text(_errorMsg, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: 160,
+              child: PrimaryButton(
+                label: 'Coba Lagi',
                 onPressed: _fetchUsers,
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text(
-                  "Coba Lagi",
-                  style: TextStyle(color: Colors.white),
-                ),
+                icon: Icons.refresh_rounded,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
-    if (_filteredUserList.isEmpty) {
-      return const Center(
+    if (_filtered.isEmpty) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 64, color: AppConstants.textLight),
-            const SizedBox(height: 16),
+            Icon(Icons.people_outline_rounded,
+                size: 64,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textTertiary),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              "Mahasiswa tidak ditemukan.",
-              style: TextStyle(
-                color: AppConstants.textLight,
-                fontWeight: FontWeight.w500,
+              'Mahasiswa tidak ditemukan',
+              style: AppTextStyles.titleMedium.copyWith(
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
               ),
             ),
           ],
@@ -167,80 +226,77 @@ class _DataUserScreenState extends State<DataUserScreen> {
 
     return RefreshIndicator(
       onRefresh: _fetchUsers,
-      color: AppConstants.primaryColor,
+      color: AppColors.primary,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _filteredUserList.length,
-        itemBuilder: (context, index) {
-          final user = _filteredUserList[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
-            color: Colors.white,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.withOpacity(0.1)),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppConstants.primaryColor.withOpacity(0.08),
-                  child: const Icon(
-                    Icons.person,
-                    color: AppConstants.primaryColor,
-                  ),
-                ),
-                title: Text(
-                  user.nama,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppConstants.textDark,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text(
-                      "NIM: ${user.nim ?? '-'}",
-                      style: const TextStyle(fontSize: 13),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, 100),
+        itemCount: _filtered.length,
+        itemBuilder: (_, i) {
+          final user = _filtered[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Email: ${user.email}",
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppConstants.textLight,
+                    child: Center(
+                      child: Text(
+                        user.nama.isNotEmpty
+                            ? user.nama[0].toUpperCase()
+                            : 'M',
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "MHS",
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.nama,
+                          style: AppTextStyles.titleMedium.copyWith(
+                            color: isDark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'NIM: ${user.nim ?? '-'}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          user.email,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textTertiary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  StatusBadge(
+                    label: 'MHS',
+                    color: AppColors.info,
+                  ),
+                ],
               ),
             ),
           );

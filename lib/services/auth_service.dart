@@ -51,6 +51,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    User? createdUser;
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -60,21 +61,43 @@ class AuthService {
       if (firebaseUser == null) {
         return {'status': 'error', 'message': 'Registrasi gagal.'};
       }
+      createdUser = firebaseUser;
 
-      await firebaseUser.updateDisplayName(nama);
       await _databaseService.createUserProfile(
         uid: firebaseUser.uid,
         nama: nama,
         nim: nim,
         email: email,
       );
+      await firebaseUser.updateDisplayName(nama);
       await _auth.signOut();
 
       return {'status': 'success'};
     } on FirebaseAuthException catch (error) {
+      // Rollback: hapus akun auth jika profile write belum sempat dilakukan
+      if (createdUser != null) {
+        try { await createdUser.delete(); } catch (_) {}
+      }
       return {'status': 'error', 'message': _authMessage(error)};
     } catch (error) {
-      return {'status': 'error', 'message': 'Registrasi gagal: $error'};
+      // Database write gagal → rollback akun auth
+      if (createdUser != null) {
+        try {
+          await createdUser.delete();
+        } catch (_) {}
+      }
+      return {'status': 'error', 'message': 'Registrasi gagal. Coba lagi.'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return {'status': 'success'};
+    } on FirebaseAuthException catch (error) {
+      return {'status': 'error', 'message': _authMessage(error)};
+    } catch (_) {
+      return {'status': 'error', 'message': 'Gagal mengirim email reset.'};
     }
   }
 

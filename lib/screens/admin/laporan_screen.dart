@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/absensi_model.dart';
 import '../../services/realtime_database_service.dart';
-import '../../utils/constants.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/app_widgets.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class LaporanScreen extends StatefulWidget {
   const LaporanScreen({Key? key}) : super(key: key);
@@ -12,12 +14,10 @@ class LaporanScreen extends StatefulWidget {
 
 class _LaporanScreenState extends State<LaporanScreen> {
   List<AbsensiModel> _absensiList = [];
+  Map<String, Map<String, dynamic>> _rekap = {};
   bool _isLoading = true;
-  String _errorMsg = "";
-  final _databaseService = RealtimeDatabaseService();
-
-  // Dynamic statistics map for student summaries
-  Map<String, Map<String, dynamic>> _rekapMahasiswa = {};
+  String _errorMsg = '';
+  final _db = RealtimeDatabaseService();
 
   @override
   void initState() {
@@ -28,282 +28,399 @@ class _LaporanScreenState extends State<LaporanScreen> {
   Future<void> _fetchLaporan() async {
     setState(() {
       _isLoading = true;
-      _errorMsg = "";
+      _errorMsg = '';
     });
-
     try {
-      final list = await _databaseService.getAllAbsensi();
-
-      // Calculate statistical summary per student
-      Map<String, Map<String, dynamic>> rekap = {};
-      for (var item in list) {
-        final nim = item.nim ?? "-";
-        if (!rekap.containsKey(nim)) {
-          rekap[nim] = {
-            "nama": item.nama ?? "N/A",
-            "nim": nim,
-            "hadir": 0,
-            "sakit": 0,
-            "izin": 0,
-            "total": 0,
-          };
-        }
-
-        final status = item.status.toLowerCase();
-        if (status.contains("hadir")) rekap[nim]!["hadir"]++;
-        if (status.contains("sakit")) rekap[nim]!["sakit"]++;
-        if (status.contains("izin")) rekap[nim]!["izin"]++;
-        rekap[nim]!["total"]++;
+      final list = await _db.getAllAbsensi();
+      final Map<String, Map<String, dynamic>> rekap = {};
+      for (final item in list) {
+        final nim = item.nim ?? '-';
+        rekap.putIfAbsent(nim, () => {
+          'nama': item.nama ?? 'N/A',
+          'nim': nim,
+          'hadir': 0,
+          'sakit': 0,
+          'izin': 0,
+          'total': 0,
+        });
+        final s = item.status.toLowerCase();
+        if (s.contains('hadir')) rekap[nim]!['hadir']++;
+        if (s.contains('sakit')) rekap[nim]!['sakit']++;
+        if (s.contains('izin')) rekap[nim]!['izin']++;
+        rekap[nim]!['total']++;
       }
-
       setState(() {
         _absensiList = list;
-        _rekapMahasiswa = rekap;
+        _rekap = rekap;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
-        _errorMsg = "Gagal mengambil laporan dari Firebase Cloud.";
+        _errorMsg = 'Gagal mengambil laporan.';
         _isLoading = false;
       });
     }
-  }
-
-  void _handlePrintReport() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.print, color: AppConstants.primaryColor),
-            SizedBox(width: 10),
-            Text("Cetak Laporan"),
-          ],
-        ),
-        content: const Text(
-          "Fitur Ekspor Laporan: Sistem siap dihubungkan dengan pustaka PDF atau printer lokal untuk mencetak berkas rekapitulasi skripsi Anda.",
-          style: TextStyle(color: AppConstants.textLight, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppConstants.primaryColor));
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_errorMsg.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline,
-                  size: 60, color: Colors.redAccent),
-              const SizedBox(height: 16),
-              Text(_errorMsg, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor),
-                onPressed: _fetchLaporan,
-                child: const Text("Coba Lagi",
-                    style: TextStyle(color: Colors.white)),
-              )
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Laporan',
+                        style: AppTextStyles.displayMedium.copyWith(
+                          color: isDark
+                              ? AppColors.textPrimaryDark
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Rekapitulasi kehadiran mahasiswa',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: _fetchLaporan,
+                    icon: const Icon(Icons.refresh_rounded),
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _buildContent(isDark)),
+          ],
         ),
-      );
-    }
-
-    final rekapList = _rekapMahasiswa.values.toList();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Rekapitulasi Kehadiran",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppConstants.textDark),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.secondaryColor,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                ),
-                icon: const Icon(Icons.print, size: 18, color: Colors.white),
-                label: const Text("Cetak PDF",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13)),
-                onPressed: _handlePrintReport,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Total Stats Info Banner
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.01),
-                    blurRadius: 10),
-              ],
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryItem(
-                    "Total Mahasiswa", _rekapMahasiswa.length, Colors.blue),
-                Container(width: 1, height: 40, color: Colors.grey[200]),
-                _buildSummaryItem(
-                    "Total Absensi", _absensiList.length, Colors.green),
-              ],
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          // Detail Table
-          const Text(
-            "Tabel Kehadiran Mahasiswa",
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppConstants.textDark),
-          ),
-          const SizedBox(height: 12),
-
-          rekapList.isEmpty
-              ? const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24.0),
-                    child: Center(
-                      child: Text(
-                          "Belum ada data kehadiran untuk dibuat laporan."),
-                    ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border:
-                          Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-                    ),
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(
-                          AppConstants.primaryColor.withValues(alpha: 0.04)),
-                      columns: const [
-                        DataColumn(
-                            label: Text("NAMA MAHASISWA",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                        DataColumn(
-                            label: Text("NIM",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                        DataColumn(
-                            label: Text("HADIR",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                        DataColumn(
-                            label: Text("SAKIT",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                        DataColumn(
-                            label: Text("IZIN",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                        DataColumn(
-                            label: Text("TOTAL SIKAP",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12))),
-                      ],
-                      rows: rekapList.map((userRekap) {
-                        return DataRow(
-                          cells: [
-                            DataCell(Text(userRekap["nama"],
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold))),
-                            DataCell(Text(userRekap["nim"])),
-                            DataCell(Center(
-                                child: Text("${userRekap["hadir"]}",
-                                    style: const TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold)))),
-                            DataCell(Center(
-                                child: Text("${userRekap["sakit"]}",
-                                    style: const TextStyle(
-                                        color: Colors.orange,
-                                        fontWeight: FontWeight.bold)))),
-                            DataCell(Center(
-                                child: Text("${userRekap["izin"]}",
-                                    style: const TextStyle(
-                                        color: Colors.blue,
-                                        fontWeight: FontWeight.bold)))),
-                            DataCell(Center(
-                                child: Text("${userRekap["total"]}",
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)))),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-          const SizedBox(height: 30),
-        ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, int value, Color color) {
+  Widget _buildContent(bool isDark) {
+    if (_isLoading) {
+      return ListView.builder(
+        itemCount: 5,
+        itemBuilder: (_, __) => const ListItemSkeleton(),
+      );
+    }
+
+    if (_errorMsg.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off_rounded,
+                size: 56,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textTertiary),
+            const SizedBox(height: AppSpacing.md),
+            Text(_errorMsg,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondary,
+                )),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: 160,
+              child: PrimaryButton(
+                label: 'Coba Lagi',
+                onPressed: _fetchLaporan,
+                icon: Icons.refresh_rounded,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final rekapList = _rekap.values.toList();
+
+    return RefreshIndicator(
+      onRefresh: _fetchLaporan,
+      color: AppColors.primary,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, 100),
+        children: [
+          // Summary card
+          AppCard(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'Total Mahasiswa',
+                    value: '${_rekap.length}',
+                    color: AppColors.info,
+                    icon: Icons.people_rounded,
+                    isDark: isDark,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 48,
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'Total Absensi',
+                    value: '${_absensiList.length}',
+                    color: AppColors.success,
+                    icon: Icons.assignment_turned_in_rounded,
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          SectionHeader(title: 'Rekap Per Mahasiswa'),
+          const SizedBox(height: AppSpacing.md),
+
+          if (rekapList.isEmpty)
+            AppCard(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Text(
+                    'Belum ada data kehadiran.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...rekapList.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _RekapCard(rekap: r, isDark: isDark),
+            )),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  final bool isDark;
+
+  const _SummaryItem({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RekapCard extends StatelessWidget {
+  final Map<String, dynamic> rekap;
+  final bool isDark;
+
+  const _RekapCard({required this.rekap, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = (rekap['total'] as int).clamp(1, 9999);
+    final hadir = rekap['hadir'] as int;
+    final pct = hadir / total;
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Center(
+                  child: Text(
+                    (rekap['nama'] as String).isNotEmpty
+                        ? (rekap['nama'] as String)[0].toUpperCase()
+                        : 'M',
+                    style: AppTextStyles.titleMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      rekap['nama'] as String,
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'NIM: ${rekap['nim']}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusBadge(
+                label: '${(pct * 100).toStringAsFixed(0)}%',
+                color: pct >= 0.75
+                    ? AppColors.success
+                    : pct >= 0.5
+                        ? AppColors.warning
+                        : AppColors.error,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AttendanceProgressBar(
+            percentage: pct,
+            color: pct >= 0.75
+                ? AppColors.success
+                : pct >= 0.5
+                    ? AppColors.warning
+                    : AppColors.error,
+            height: 6,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _StatChip(
+                label: 'Hadir',
+                value: '${rekap['hadir']}',
+                color: AppColors.success,
+              ),
+              _StatChip(
+                label: 'Sakit',
+                value: '${rekap['sakit']}',
+                color: AppColors.warning,
+              ),
+              _StatChip(
+                label: 'Izin',
+                value: '${rekap['izin']}',
+                color: AppColors.info,
+              ),
+              _StatChip(
+                label: 'Total',
+                value: '${rekap['total']}',
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label,
-            style:
-                const TextStyle(color: AppConstants.textLight, fontSize: 13)),
-        const SizedBox(height: 6),
         Text(
-          "$value",
-          style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold, color: color),
+          value,
+          style: AppTextStyles.titleLarge.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          label,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       ],
     );

@@ -20,10 +20,10 @@ class UserModel {
     return UserModel(
       id: json['id'] is int ? json['id'] : uid.hashCode,
       uid: uid,
-      nama: json['nama'] as String,
+      nama: (json['nama'] as String?) ?? 'Tidak diketahui',
       nim: json['nim'] as String?,
-      email: json['email'] as String,
-      role: json['role'] as String,
+      email: (json['email'] as String?) ?? '',
+      role: (json['role'] as String?) ?? 'mahasiswa',
     );
   }
 

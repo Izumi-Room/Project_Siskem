@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/user_model.dart';
-import '../../services/barcode_service.dart';
 import '../../services/scanner_service.dart';
-import '../../utils/constants.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/lottie_assets.dart';
 
 class ScanScreen extends StatefulWidget {
   final UserModel user;
@@ -20,7 +22,6 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
-  final _barcodeService = BarcodeService();
   final _scannerService = ScannerService();
   final _manualInputController = TextEditingController();
   bool _isProcessing = false;
@@ -33,65 +34,42 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
-  // Handle scanned cipher text
-  void _processScannedData(String cipherText) async {
+  // ── Proses QR yang di-scan ───────────────────────────────────────────────
+
+  void _processScannedData(String scannedValue) async {
     if (_isProcessing) return;
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
+    _scannerController.stop();
 
-    _scannerController.stop(); // Stop scanning to prevent multiple scans
-
-    // 1. Decrypt & parse the QR session
-    final parsedQR = _barcodeService.parseScannedQR(cipherText);
-
-    if (parsedQR == null) {
-      _showResultDialog(
-        success: false,
-        title: "QR Code Tidak Valid",
-        message: "Format QR tidak didukung atau kunci enkripsi salah.",
-      );
-      return;
-    }
-
-    final adminId = parsedQR['admin_id'].toString();
-    final tanggal = parsedQR['tanggal'];
-    final jam = parsedQR['jam'];
-    final status = parsedQR['status'];
-    final randomKey = parsedQR['random_key'];
-
-    // 2. Validate date (Optional, for demo we can print info)
-    // 3. Submit attendance to Firebase Realtime Database
     try {
-      final response = await _scannerService.submitAttendance(
+      final response = await _scannerService.processScannedQR(
         student: widget.user,
-        adminId: adminId,
-        tanggal: tanggal,
-        jam: jam,
-        status: status,
-        randomKey: randomKey,
+        scannedValue: scannedValue,
       );
 
       if (response['status'] == 'success') {
-        widget.onAttendanceSuccess(); // callback to update list/stats
+        widget.onAttendanceSuccess();
         _showResultDialog(
           success: true,
-          title: "Absensi Berhasil!",
+          title: 'Absensi Berhasil!',
           message:
-              "Kehadiran Anda [Status: $status] pada tanggal $tanggal jam $jam telah sukses dicatat di Firebase Cloud menggunakan pengamanan Triple DES.",
+              'Status: ${response['statusAbsensi']}\n'
+              'Lokasi: ${response['location']}\n\n'
+              'Kehadiran Anda telah dicatat di Firebase Cloud '
+              'dengan pengamanan Triple DES.',
         );
       } else {
         _showResultDialog(
           success: false,
-          title: "Gagal Absensi",
-          message: response['message'] ?? "Sistem menolak pencatatan absensi.",
+          title: 'Absensi Ditolak',
+          message: response['message'] ?? 'Sistem menolak pencatatan absensi.',
         );
       }
     } catch (e) {
       _showResultDialog(
         success: false,
-        title: "Koneksi Bermasalah",
-        message: "Gagal menyimpan data ke Firebase Cloud. Detail: $e",
+        title: 'Koneksi Bermasalah',
+        message: 'Gagal menyimpan data ke Firebase Cloud.\nDetail: $e',
       );
     }
   }
@@ -104,86 +82,21 @@ class _ScanScreenState extends State<ScanScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.0),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: success
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.redAccent.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  success ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                  color: success ? Colors.green : Colors.redAccent,
-                  size: 60,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppConstants.textDark,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppConstants.textLight,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        success ? Colors.green : AppConstants.primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _isProcessing = false;
-                    });
-                    _scannerController.start(); // Resume scanner
-                  },
-                  child: const Text(
-                    "OK",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      barrierColor: Colors.black87,
+      builder: (context) => _LottieResultDialog(
+        success: success,
+        title: title,
+        message: message,
+        onDismiss: () {
+          Navigator.pop(context);
+          setState(() => _isProcessing = false);
+          if (!success) _scannerController.start();
+        },
+      ),
     );
   }
 
-  // Opens a dialog for manual ciphertext input (perfect for emulator testing!)
+  // Opens a dialog for manual QR ID input (perfect for emulator testing!)
   void _showManualInputDialog() {
     _manualInputController.clear();
     showDialog(
@@ -193,12 +106,12 @@ class _ScanScreenState extends State<ScanScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: Row(
-            children: const [
-              Icon(Icons.keyboard, color: AppConstants.primaryColor),
+          title: const Row(
+            children: [
+              Icon(Icons.keyboard, color: AppColors.primary),
               SizedBox(width: 10),
               Text(
-                "Input Ciphertext Manual",
+                'Input QR ID Manual',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
@@ -208,15 +121,15 @@ class _ScanScreenState extends State<ScanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Mode Demo: Salin Ciphertext yang di-generate Admin dan tempel di bawah ini.",
-                style: TextStyle(color: AppConstants.textLight, fontSize: 13),
+                'Mode Demo: Salin QR ID dari panel Admin dan tempel di bawah ini.',
+                style: TextStyle(color: AppColors.primary, fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _manualInputController,
-                maxLines: 4,
+                maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: "Masukkan Ciphertext Base64...",
+                  hintText: 'Masukkan QR ID (Firebase push key)...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -230,15 +143,15 @@ class _ScanScreenState extends State<ScanScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
-                "Batal",
-                style: TextStyle(color: AppConstants.textLight),
+                'Batal',
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
               onPressed: () {
@@ -249,7 +162,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 }
               },
               child: const Text(
-                "Proses",
+                'Proses',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -282,7 +195,7 @@ class _ScanScreenState extends State<ScanScreen> {
           child: Container(
             decoration: ShapeDecoration(
               shape: QrScannerOverlayShape(
-                borderColor: AppConstants.secondaryColor,
+                borderColor: AppColors.primary,
                 borderRadius: 24,
                 borderLength: 30,
                 borderWidth: 8,
@@ -305,8 +218,8 @@ class _ScanScreenState extends State<ScanScreen> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(30),
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: const Text(
                   "Arahkan Kamera ke QR Code Absensi",
@@ -332,17 +245,18 @@ class _ScanScreenState extends State<ScanScreen> {
               // Flash Button
               CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.black.withOpacity(0.6),
+                backgroundColor: Colors.black.withValues(alpha: 0.6),
                 child: IconButton(
                   icon: const Icon(Icons.flash_on, color: Colors.white),
                   onPressed: () => _scannerController.toggleTorch(),
                 ),
               ),
 
-              // Manual Input (Demo mode shortcut)
-              ElevatedButton.icon(
+              // Manual Input — DEBUG ONLY, hidden in release builds
+              if (kDebugMode)
+                ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.7),
+                  backgroundColor: Colors.black.withValues(alpha: 0.7),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 14,
@@ -350,14 +264,14 @@ class _ScanScreenState extends State<ScanScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  side: const BorderSide(
-                    color: AppConstants.secondaryColor,
+                  side: BorderSide(
+                    color: AppColors.primary,
                     width: 1.5,
                   ),
                 ),
                 icon: const Icon(Icons.keyboard, color: Colors.white, size: 20),
                 label: const Text(
-                  "Mode Demo: Input Text",
+                  'Mode Demo: Input QR ID',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -370,7 +284,7 @@ class _ScanScreenState extends State<ScanScreen> {
               // Camera Flip
               CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.black.withOpacity(0.6),
+                backgroundColor: Colors.black.withValues(alpha: 0.6),
                 child: IconButton(
                   icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
                   onPressed: () => _scannerController.switchCamera(),
@@ -380,24 +294,62 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
         ),
 
+        // ── Lottie QR Scan Animation Overlay ────────────────────────
+        if (!_isProcessing)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).size.width * 0.15,
+                  ),
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    height: MediaQuery.of(context).size.width * 0.7,
+                    child: Lottie.asset(
+                      LottieAssets.scanQr,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
         if (_isProcessing)
           Container(
             color: Colors.black54,
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppConstants.secondaryColor),
-                  SizedBox(height: 16),
-                  Text(
-                    "Mengamankan Transaksi Absensi...",
+                  Lottie.asset(
+                    LottieAssets.scanQr,
+                    width: 120,
+                    height: 120,
+                    repeat: true,
+                    errorBuilder: (_, __, ___) => CircularProgressIndicator(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Memvalidasi Absensi...',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
                   ),
-                  Text(
-                    "Proses Enkripsi Triple DES",
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Cek QR · Cek Expired · Cek Duplikat',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
@@ -452,7 +404,7 @@ class QrScannerOverlayShape extends ShapeBorder {
     final bottom = top + boxHeight;
 
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.7)
+      ..color = Colors.black.withValues(alpha: 0.7)
       ..style = PaintingStyle.fill;
 
     // Outer background overlay
@@ -513,6 +465,184 @@ class QrScannerOverlayShape extends ShapeBorder {
       borderLength: borderLength,
       borderRadius: borderRadius,
       cutOutSize: cutOutSize,
+    );
+  }
+}
+
+// ── Lottie Result Dialog (fullscreen modal) ───────────────────────────────────
+class _LottieResultDialog extends StatefulWidget {
+  final bool success;
+  final String title;
+  final String message;
+  final VoidCallback onDismiss;
+
+  const _LottieResultDialog({
+    required this.success,
+    required this.title,
+    required this.message,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_LottieResultDialog> createState() => _LottieResultDialogState();
+}
+
+class _LottieResultDialogState extends State<_LottieResultDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _entryCtrl;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnim = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _entryCtrl, curve: Curves.elasticOut),
+    );
+    _fadeAnim = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl.forward();
+
+    // Auto-dismiss after 2.5s on success
+    if (widget.success) {
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        if (mounted) widget.onDismiss();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _entryCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.success ? const Color(0xFF059669) : Colors.redAccent;
+
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ScaleTransition(
+          scale: _scaleAnim,
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.2),
+                  blurRadius: 32,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Lottie ──────────────────────────────────────────────
+                Lottie.asset(
+                  widget.success
+                      ? LottieAssets.resultSuccess
+                      : LottieAssets.resultError,
+                  width: 160,
+                  height: 160,
+                  repeat: !widget.success,
+                  errorBuilder: (_, __, ___) => Icon(
+                    widget.success
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded,
+                    color: color,
+                    size: 80,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ── Title ────────────────────────────────────────────────
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // ── Message ──────────────────────────────────────────────
+                Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Button (only shown on error; success auto-dismisses) ─
+                if (!widget.success)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                      ),
+                      onPressed: widget.onDismiss,
+                      child: const Text(
+                        'Coba Lagi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                if (widget.success) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Kembali ke dashboard otomatis...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
